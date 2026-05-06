@@ -9,6 +9,14 @@ A Python utility for submitting resume information via a signed HTTP POST reques
 -   **Compact JSON**: Serializes payload with minimal whitespace and sorted keys
 -   **Environment-Based Configuration**: All credentials and URLs sourced from environment variables
 
+## How It Works
+
+1. GitHub Actions triggers the script
+2. The script constructs a canonical JSON payload
+3. The payload is signed using HMAC-SHA256
+4. A POST request is sent to the submission endpoint
+5. The response receipt is printed in the workflow logs
+
 ## Environment Variables
 
 Required environment variables:
@@ -23,31 +31,20 @@ Required environment variables:
 
 ## Usage
 
-To run it, all thats needed is python 3.11 and above
+Locally, just set environment variables and run this below
 
 ```shell
 python main.py
 ```
 
-## Payload Structure
+> When running locally, you must manually set environment variables such as ACTION_RUN_LINK.
 
-The submission includes:
+## GitHub Actions
 
--   `action_run_link` — GitHub Actions workflow run URL
--   `email` — Submitter email address
--   `name` — Submitter name
--   `repository_link` — GitHub repository URL
--   `resume_link` — LinkedIn profile URL
--   `timestamp` — ISO 8601 UTC timestamp
+The workflow automatically injects:
 
-Keys are sorted alphabetically in the JSON output.
+-   repository name
+-   run link
+-   secrets (name, email, resume)
 
-## Signature Header
-
-The request includes an `X-Signature-256` header with format:
-
-```
-X-Signature-256: sha256={hex-digest}
-```
-
-The signature is computed over the exact UTF-8-encoded JSON bytes using the signing secret as the key.
+Trigger it from the Actions tab → Run workflow.
