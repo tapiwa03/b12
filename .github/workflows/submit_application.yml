@@ -28,4 +28,4 @@ jobs:
                   SUBMISSION_URL: ${{ secrets.SUBMISSION_URL }}
                   SIGNING_SECRET: ${{ secrets.SIGNING_SECRET }}
 
-              run: python submit.py
+              run: python main.py
