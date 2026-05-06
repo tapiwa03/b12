@@ -9,22 +9,31 @@ import hashlib
 
 class ResumeSubmitter:
     def __init__(self):
-        self.submission_url = os.getenv("SUBMISSION_URL")
-        self.repo_name = os.getenv("REPO_NAME")
-        self.action_run_link = os.getenv("ACTION_RUN_LINK")
-        self.signing_secret = os.getenv("SIGNING_SECRET")
+        REQUIRED_ENV_VARS = [
+            "REPO_NAME",
+            "ACTION_RUN_LINK",
+            "NAME",
+            "EMAIL",
+            "RESUME_LINK",
+            "SUBMISSION_URL",
+            "SIGNING_SECRET",
+        ]
 
-        if not all(
-            [
-                self.repo_name,
-                self.action_run_link,
-                self.submission_url,
-                self.signing_secret,
-            ]
-        ):
+        env = {var: os.getenv(var) for var in REQUIRED_ENV_VARS}
+        missing = [k for k, v in env.items() if not v]
+
+        if missing:
             raise ValueError(
-                "Ensure to set REPO_NAME, ACTION_RUN_LINK, SUBMISSION_URL, and SIGNING_SECRET are set inside the environment."
+                f"Missing required environment variables: {', '.join(missing)}"
             )
+
+        self.repo_name = env["REPO_NAME"]
+        self.action_run_link = env["ACTION_RUN_LINK"]
+        self.name = env["NAME"]
+        self.email = env["EMAIL"]
+        self.resume_link = env["RESUME_LINK"]
+        self.submission_url = env["SUBMISSION_URL"]
+        self.signing_secret = env["SIGNING_SECRET"]
 
     @cached_property
     def payload(self):
@@ -33,10 +42,10 @@ class ResumeSubmitter:
                 "timestamp": datetime.now(timezone.utc)
                 .isoformat()
                 .replace("+00:00", "Z"),
-                "name": "Tapiwa Lason Mapfundematsva",
-                "email": "tapiwa@tapiwa.io",
+                "name": self.name,
+                "email": self.email,
                 "repository_link": "https://github.com/" + self.repo_name,
-                "resume_link": "https://www.linkedin.com/in/tapiwa-lason/",
+                "resume_link": self.resume_link,
                 "action_run_link": self.action_run_link,
             },
             sort_keys=True,
@@ -52,7 +61,7 @@ class ResumeSubmitter:
         ).hexdigest()
         return {
             "Content-Type": "application/json",
-            "X-Signature-256": signature,
+            "X-Signature-256": f"sha256={signature}",
         }
 
     def submit(self):
@@ -64,12 +73,18 @@ class ResumeSubmitter:
         )
 
         try:
-            with request.urlopen(req) as response:
+            with request.urlopen(req, timeout=10) as response:
                 response_body = response.read().decode("utf-8")
                 print("Status Code:", response.status)
-                print("Response:", response_body)
+
+                receipt = json.loads(response_body).get("receipt")
+                if not receipt:
+                    raise ValueError("No receipt found in the response.")
+                print("Receipt: ", receipt)
+
         except Exception as e:
             print("Error:", e)
+            exit(1)
 
 
 if __name__ == "__main__":
